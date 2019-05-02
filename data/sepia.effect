@@ -1,0 +1,42 @@
+uniform float4x4 ViewProj;
+uniform texture2d image;
+
+sampler_state textureSampler {
+	Filter    = Linear;
+	AddressU  = Clamp;
+	AddressV  = Clamp;
+};
+
+struct VertData {
+	float4 pos : POSITION;
+	float2 uv  : TEXCOORD0;
+};
+
+VertData VSDefault(VertData v_in)
+{
+	VertData vert_out;
+	vert_out.pos = mul(float4(v_in.pos.xyz, 1.0), ViewProj);
+	vert_out.uv  = v_in.uv;
+	return vert_out;
+}
+
+float4 sepia(VertData v_in) : TARGET
+{
+	float4 color = image.Sample(textureSampler, v_in.uv);
+
+	float4 sepia;
+	sepia.r = min((color.r * .393) + (color.g * .769) + (color.b * .189), 255);
+	sepia.g = min((color.r * .349) + (color.g * .686) + (color.b * .168), 255);
+	sepia.b = min((color.r * .272) + (color.g * .534) + (color.b * .131), 255);
+
+	return float4(sepia.rgb, color.a);
+}
+
+technique Draw
+{
+	pass
+	{
+		vertex_shader = VSDefault(v_in);
+		pixel_shader  = sepia(v_in);
+	}
+}
