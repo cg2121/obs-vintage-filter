@@ -15,16 +15,11 @@ static void vintage_filter_destroy(void *data)
 {
 	struct vintage_filter *vf = data;
 
-	if (vf) {
-		obs_enter_graphics();
+	obs_enter_graphics();
+	gs_effect_destroy(vf->effect);
+	obs_leave_graphics();
 
-		if (vf->effect)
-			gs_effect_destroy(vf->effect);
-
-		bfree(vf);
-
-		obs_leave_graphics();
-	}
+	bfree(vf);
 }
 
 static void vintage_filter_update(void *data, obs_data_t *settings)
@@ -41,15 +36,10 @@ static void vintage_filter_update(void *data, obs_data_t *settings)
 
 	obs_enter_graphics();
 
-	if (vf->effect)
-		gs_effect_destroy(vf->effect);
+	gs_effect_destroy(vf->effect);
 
 	vf->effect = gs_effect_create_from_file(effect_file, NULL);
 	bfree(effect_file);
-	if (!vf->effect) {
-		vintage_filter_destroy(vf);
-		vf = NULL;
-	}
 
 	obs_leave_graphics();
 }
