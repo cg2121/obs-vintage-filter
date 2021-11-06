@@ -84,7 +84,7 @@ static obs_properties_t *vintage_filter_properties(void *data)
 struct obs_source_info vintage_filter = {
 	.id             = "vintage_filter",
 	.type           = OBS_SOURCE_TYPE_FILTER,
-	.output_flags   = OBS_SOURCE_VIDEO,
+	.output_flags   = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB,
 	.get_name       = vintage_filter_getname,
 	.create         = vintage_filter_create,
 	.destroy        = vintage_filter_destroy,

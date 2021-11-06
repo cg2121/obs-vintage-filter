@@ -20,16 +20,42 @@ VertData VSDefault(VertData v_in)
 	return vert_out;
 }
 
+float srgb_linear_to_nonlinear_channel(float u)
+{
+	return (u <= 0.0031308) ? (12.92 * u) : ((1.055 * pow(u, 1.0 / 2.4)) - 0.055);
+}
+
+float3 srgb_linear_to_nonlinear(float3 v)
+{
+	return float3(srgb_linear_to_nonlinear_channel(v.r), srgb_linear_to_nonlinear_channel(v.g), srgb_linear_to_nonlinear_channel(v.b));
+}
+
+float srgb_nonlinear_to_linear_channel(float u)
+{
+	return (u <= 0.04045) ? (u / 12.92) : pow((u + 0.055) / 1.055, 2.4);
+}
+
+float3 srgb_nonlinear_to_linear(float3 v)
+{
+	return float3(srgb_nonlinear_to_linear_channel(v.r), srgb_nonlinear_to_linear_channel(v.g), srgb_nonlinear_to_linear_channel(v.b));
+}
+
 float4 sepia(VertData v_in) : TARGET
 {
-	float4 color = image.Sample(textureSampler, v_in.uv);
+	float4 textureColor = image.Sample(textureSampler, v_in.uv);
+	textureColor.rgb = max(float3(0.0, 0.0, 0.0), textureColor.rgb / textureColor.a);
+	textureColor.rgb = srgb_linear_to_nonlinear(textureColor.rgb);
 
-	float4 sepia;
-	sepia.r = min((color.r * .393) + (color.g * .769) + (color.b * .189), 255);
-	sepia.g = min((color.r * .349) + (color.g * .686) + (color.b * .168), 255);
-	sepia.b = min((color.r * .272) + (color.g * .534) + (color.b * .131), 255);
+	float3 sepia;
+	sepia.r = min((textureColor.r * .393) + (textureColor.g * .769) + (textureColor.b * .189), 1.0);
+	sepia.g = min((textureColor.r * .349) + (textureColor.g * .686) + (textureColor.b * .168), 1.0);
+	sepia.b = min((textureColor.r * .272) + (textureColor.g * .534) + (textureColor.b * .131), 1.0);
 
-	return float4(sepia.rgb, color.a);
+	textureColor.rgb = sepia.rgb;
+
+	textureColor.rgb = srgb_nonlinear_to_linear(textureColor.rgb);
+	textureColor.rgb *= textureColor.a;
+	return textureColor;
 }
 
 technique Draw

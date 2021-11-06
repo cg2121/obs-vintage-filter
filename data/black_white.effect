@@ -20,12 +20,38 @@ VertData VSDefault(VertData v_in)
 	return vert_out;
 }
 
+float srgb_linear_to_nonlinear_channel(float u)
+{
+	return (u <= 0.0031308) ? (12.92 * u) : ((1.055 * pow(u, 1.0 / 2.4)) - 0.055);
+}
+
+float3 srgb_linear_to_nonlinear(float3 v)
+{
+	return float3(srgb_linear_to_nonlinear_channel(v.r), srgb_linear_to_nonlinear_channel(v.g), srgb_linear_to_nonlinear_channel(v.b));
+}
+
+float srgb_nonlinear_to_linear_channel(float u)
+{
+	return (u <= 0.04045) ? (u / 12.92) : pow((u + 0.055) / 1.055, 2.4);
+}
+
+float3 srgb_nonlinear_to_linear(float3 v)
+{
+	return float3(srgb_nonlinear_to_linear_channel(v.r), srgb_nonlinear_to_linear_channel(v.g), srgb_nonlinear_to_linear_channel(v.b));
+}
+
 float4 black_white(VertData v_in) : TARGET
 {
-	float4 color = image.Sample(textureSampler, v_in.uv);
-	float luminance = color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
+	float4 textureColor = image.Sample(textureSampler, v_in.uv);
+	textureColor.rgb = max(float3(0.0, 0.0, 0.0), textureColor.rgb / textureColor.a);
+	textureColor.rgb = srgb_linear_to_nonlinear(textureColor.rgb);
 
-	return float4(luminance, luminance, luminance, color.a);
+	float luminance = textureColor.r * 0.299 + textureColor.g * 0.587 + textureColor.b * 0.114;
+	textureColor.rgb = float3(luminance, luminance, luminance);
+
+	textureColor.rgb = srgb_nonlinear_to_linear(textureColor.rgb);
+	textureColor.rgb *= textureColor.a;
+	return textureColor;
 }
 
 technique Draw
