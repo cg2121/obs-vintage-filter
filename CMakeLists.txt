@@ -1,107 +1,125 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.16)
 
-project(obs-vintage-filter)
+# Change obs-plugintemplate to your plugin's name in a machine-readable format
+# (e.g.: obs-myawesomeplugin) and set 
+project(obs-vintage-filter VERSION 2.0.0)
+add_library(${CMAKE_PROJECT_NAME} MODULE)
 
-if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-	set(ARCH_NAME "64bit")
-	set(OBS_BUILDDIR_ARCH "build64")
-	set(_lib_suffix 64)
-else()
-	set(ARCH_NAME "32bit")
-	set(OBS_BUILDDIR_ARCH "build32")
-	set(_lib_suffix 32)
-endif()
+# Replace `Your Name Here` with the name (yours or your organization's) you want
+# to see as the author of the plugin (in the plugin's metadata itself and in the installers)
+set(PLUGIN_AUTHOR "cg2121")
 
-##########################################
-# find libobs                            #
-##########################################
-include(external/FindLibObs.cmake)
-find_package(LibObs REQUIRED)
+# Replace `com.example.obs-plugin-template` with a unique Bundle ID for macOS releases
+# (used both in the installer and when submitting the installer for notarization)
+set(MACOS_BUNDLEID "com.obs-plugin.obs-vintage-filter")
 
-set(obs-vintage-filter_SOURCES
-	src/vintage-filter.c
-	)
+# Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
+set(LINUX_MAINTAINER_EMAIL "claytong1214@gmail.com")
 
-include_directories(
-	${LIBOBS_INCLUDE_DIR}
-)
+# Add your custom source files here - header files are optional and only required for visibility
+# e.g. in Xcode or Visual Studio
+target_sources(${CMAKE_PROJECT_NAME}
+	PRIVATE
+		src/plugin-main.c)
 
-add_library(obs-vintage-filter MODULE
-	${obs-vintage-filter_SOURCES}
-	)
+# /!\ TAKE NOTE: No need to edit things past this point /!\
 
-target_link_libraries(obs-vintage-filter
-	${LIBOBS_LIB}
-	)
+find_package(libobs REQUIRED)
+find_package(obs-frontend-api REQUIRED)
+include(external/ObsPluginHelpers.cmake)
+find_package(Qt5Core REQUIRED)
+find_package(Qt5Widgets REQUIRED)
+
+
+configure_file(
+	src/plugin-macros.h.in
+	${CMAKE_SOURCE_DIR}/src/plugin-macros.generated.h)
+
+target_sources(${CMAKE_PROJECT_NAME}
+	PRIVATE
+		src/plugin-macros.generated.h)
+
+# --- Platform-independent build settings ---
+
+target_include_directories(${CMAKE_PROJECT_NAME}
+	PRIVATE ${CMAKE_SOURCE_DIR}/src)
+
+target_link_libraries(${CMAKE_PROJECT_NAME}
+	PRIVATE
+		OBS::libobs
+		OBS::obs-frontend-api
+		Qt5::Core
+		Qt5::Widgets)
+
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
+	AUTOMOC ON
+	AUTOUIC ON
+	AUTORCC ON)
+
+target_compile_features(${CMAKE_PROJECT_NAME}
+	PRIVATE
+		cxx_std_17)
+
+# --- End of section ---
 
 # --- Windows-specific build settings and tasks ---
-if(WIN32)
-	# --- Release package helper ---
-	# The "release" folder has a structure similar OBS' one on Windows
-	set(RELEASE_DIR "${PROJECT_SOURCE_DIR}/release")
+if(OS_WINDOWS)
+	configure_file(
+		installer/installer-Windows.iss.in
+		${CMAKE_SOURCE_DIR}/installer/installer-Windows.generated.iss)
 
-	add_custom_command(TARGET obs-vintage-filter POST_BUILD
-		# If config is Release, package release files
-		COMMAND if $<CONFIG:Release>==1 (
-		"${CMAKE_COMMAND}" -E make_directory
-		"${RELEASE_DIR}/data/obs-plugins/obs-vintage-filter"
-		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
+	configure_file(
+		CI/include/build_environment.ps1.in
+		${CMAKE_SOURCE_DIR}/CI/include/build_environment.ps1)
 
-		# If config is RelWithDebInfo, package release files
-		COMMAND if $<CONFIG:RelWithDebInfo>==1 (
-		"${CMAKE_COMMAND}" -E make_directory
-		"${RELEASE_DIR}/data/obs-plugins/obs-vintage-filter"
-		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
+	if(MSVC)
+		target_compile_options(${CMAKE_PROJECT_NAME}
+			PRIVATE
+				/MP
+				/d2FH4-)
+	endif()
+# --- End of section ---
 
-		COMMAND if $<CONFIG:Release>==1 ("${CMAKE_COMMAND}" -E copy_directory
-		"${PROJECT_SOURCE_DIR}/data"
-		"${RELEASE_DIR}/data/obs-plugins/obs-vintage-filter")
+# -- macOS specific build settings and tasks --
+elseif(OS_MACOS)
+	configure_file(
+		bundle/installer-macOS.pkgproj.in
+		${CMAKE_SOURCE_DIR}/bundle/installer-macOS.generated.pkgproj)
 
-		COMMAND if $<CONFIG:RelWithDebInfo>==1 ("${CMAKE_COMMAND}" -E copy_directory
-		"${PROJECT_SOURCE_DIR}/data"
-		"${RELEASE_DIR}/data/obs-plugins/obs-vintage-filter")
+	configure_file(
+		CI/include/build_environment.sh.in
+		${CMAKE_SOURCE_DIR}/CI/include/build_environment.sh
+	)
 
-		COMMAND if $<CONFIG:RelWithDebInfo>==1 ("${CMAKE_COMMAND}" -E copy
-		"$<TARGET_PDB_FILE:obs-vintage-filter>"
-		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
+	set(MACOSX_PLUGIN_GUI_IDENTIFIER "${MACOS_BUNDLEID}")
+	set(MACOSX_PLUGIN_BUNDLE_VERSION "${CMAKE_PROJECT_VERSION}")
+	set(MACOSX_PLUGIN_SHORT_VERSION_STRING "1")
 
-		COMMAND (
-		"${CMAKE_COMMAND}" -E copy
-		"$<TARGET_FILE:obs-vintage-filter>"
-		"${RELEASE_DIR}/obs-plugins/${ARCH_NAME}")
+	target_compile_options(${CMAKE_PROJECT_NAME}
+		PRIVATE
+			-Wall
+			-Wextra
+			-Werror-implicit-function-declaration
+			-stdlib=libc++
+			-fvisibility=default)
 
-		# Copy to obs-studio environment for immediate testing
-		COMMAND (
-		"${CMAKE_COMMAND}" -E copy
-		"$<TARGET_FILE:obs-vintage-filter>"
-		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/obs-plugins/${ARCH_NAME}")
+	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
+# --- End of section ---
 
-		COMMAND if $<CONFIG:Debug>==1 (
-		"${CMAKE_COMMAND}" -E copy
-		"$<TARGET_PDB_FILE:obs-vintage-filter>"
-		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/obs-plugins/${ARCH_NAME}")
+# --- Linux-specific build settings and tasks ---
+else()
+	configure_file(
+		CI/include/build_environment.sh.in
+		${CMAKE_SOURCE_DIR}/CI/include/build_environment.sh
+	)
 
-		COMMAND (
-		"${CMAKE_COMMAND}" -E make_directory
-		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/data/obs-plugins/obs-vintage-filter")
+	target_compile_options(${CMAKE_PROJECT_NAME}
+		PRIVATE
+			-Wall
+			-Wextra)
 
-		COMMAND (
-		"${CMAKE_COMMAND}" -E copy_directory
-		"${PROJECT_SOURCE_DIR}/data"
-		"${LIBOBS_INCLUDE_DIR}/../${OBS_BUILDDIR_ARCH}/rundir/$<CONFIG>/data/obs-plugins/obs-vintage-filter")
-		)
+	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
 endif()
+# --- End of section ---
 
-if(UNIX AND NOT APPLE)
-	set_target_properties(obs-vintage-filter PROPERTIES PREFIX "")
-
-	file(GLOB effect_files data/*.effect)
-	file(GLOB locale_files data/locale/*.ini)
-
-	install(TARGETS obs-vintage-filter LIBRARY DESTINATION
-		"${CMAKE_INSTALL_PREFIX}/lib/obs-plugins")
-	install(FILES ${effect_files} DESTINATION
-		"${CMAKE_INSTALL_PREFIX}/share/obs/obs-plugins/obs-vintage-filter/")
-	install(FILES ${locale_files} DESTINATION
-		"${CMAKE_INSTALL_PREFIX}/share/obs/obs-plugins/obs-vintage-filter/locale")
-endif()
+setup_plugin_target(${CMAKE_PROJECT_NAME})
