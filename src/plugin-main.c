@@ -57,7 +57,7 @@ static void vintage_filter_render(void *data, gs_effect_t *effect)
 	struct vintage_filter *vf = data;
 
 	if (!obs_source_process_filter_begin(vf->source, GS_RGBA,
-				OBS_ALLOW_DIRECT_RENDERING))
+					     OBS_ALLOW_DIRECT_RENDERING))
 		return;
 
 	obs_source_process_filter_end(vf->source, vf->effect, 0, 0);
@@ -70,28 +70,27 @@ static obs_properties_t *vintage_filter_properties(void *data)
 	obs_properties_t *props = obs_properties_create();
 
 	obs_property_t *p = obs_properties_add_list(props, "type",
-			obs_module_text("Type"),
-			OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_STRING);
-	obs_property_list_add_string(p,
-			obs_module_text("blackWhite"), "blackWhite");
-	obs_property_list_add_string(p,
-			obs_module_text("Sepia"), "sepia");
+						    obs_module_text("Type"),
+						    OBS_COMBO_TYPE_LIST,
+						    OBS_COMBO_FORMAT_STRING);
+	obs_property_list_add_string(p, obs_module_text("blackWhite"),
+				     "blackWhite");
+	obs_property_list_add_string(p, obs_module_text("Sepia"), "sepia");
 
 	UNUSED_PARAMETER(data);
 	return props;
 }
 
 struct obs_source_info vintage_filter = {
-	.id             = "vintage_filter",
-	.type           = OBS_SOURCE_TYPE_FILTER,
-	.output_flags   = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB,
-	.get_name       = vintage_filter_getname,
-	.create         = vintage_filter_create,
-	.destroy        = vintage_filter_destroy,
-	.video_render   = vintage_filter_render,
-	.update         = vintage_filter_update,
-	.get_properties = vintage_filter_properties
-};
+	.id = "vintage_filter",
+	.type = OBS_SOURCE_TYPE_FILTER,
+	.output_flags = OBS_SOURCE_VIDEO | OBS_SOURCE_SRGB,
+	.get_name = vintage_filter_getname,
+	.create = vintage_filter_create,
+	.destroy = vintage_filter_destroy,
+	.video_render = vintage_filter_render,
+	.update = vintage_filter_update,
+	.get_properties = vintage_filter_properties};
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE("obs-vintage-filter", "en-US")
@@ -103,6 +102,4 @@ bool obs_module_load(void)
 	return true;
 }
 
-void obs_module_unload(void)
-{
-}
+void obs_module_unload(void) {}
