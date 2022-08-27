@@ -30,9 +30,9 @@ static void vintage_filter_update(void *data, obs_data_t *settings)
 	const char *type = obs_data_get_string(settings, "type");
 
 	if (strcmp(type, "blackWhite") == 0)
-		effect_file = obs_module_file("black_white.effect");
+		effect_file = obs_module_file("effects/black_white.effect");
 	else if (strcmp(type, "sepia") == 0)
-		effect_file = obs_module_file("sepia.effect");
+		effect_file = obs_module_file("effects/sepia.effect");
 
 	obs_enter_graphics();
 
