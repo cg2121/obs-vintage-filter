@@ -483,7 +483,7 @@ else()
   # Unix specific settings
   if(OS_POSIX)
     # Paths to binaries and plugins differ between portable and non-portable builds on Linux
-    option(LINUX_PORTABLE "Build portable version (Linux)" OFF)
+    option(LINUX_PORTABLE "Build portable version (Linux)" ON)
     if(NOT LINUX_PORTABLE)
       set(OBS_LIBRARY_DESTINATION ${CMAKE_INSTALL_LIBDIR})
       set(OBS_PLUGIN_DESTINATION ${OBS_LIBRARY_DESTINATION}/obs-plugins)
